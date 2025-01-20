@@ -173,6 +173,13 @@ namespace Emby.Naming.Common
                 ".vtt",
             };
 
+            LyricFileExtensions = new[]
+            {
+                ".lrc",
+                ".elrc",
+                ".txt"
+            };
+
             AlbumStackingPrefixes = new[]
             {
                 "cd",
@@ -460,6 +467,14 @@ namespace Emby.Naming.Common
                 {
                     IsNamed = true
                 },
+
+                // Anime style expression
+                // "[Group][Series Name][21][1080p][FLAC][HASH]"
+                // "[Group] Series Name [04][BDRIP]"
+                new EpisodeExpression(@"(?:\[(?:[^\]]+)\]\s*)?(?<seriesname>\[[^\]]+\]|[^[\]]+)\s*\[(?<epnumber>[0-9]+)\]")
+                {
+                    IsNamed = true
+                },
             };
 
             VideoExtraRules = new[]
@@ -528,6 +543,12 @@ namespace Emby.Naming.Common
                     ExtraType.Unknown,
                     ExtraRuleType.DirectoryName,
                     "extras",
+                    MediaType.Video),
+
+                new ExtraRule(
+                    ExtraType.Unknown,
+                    ExtraRuleType.DirectoryName,
+                    "extra",
                     MediaType.Video),
 
                 new ExtraRule(
@@ -790,6 +811,11 @@ namespace Emby.Naming.Common
         /// Gets or sets list of subtitle file extensions.
         /// </summary>
         public string[] SubtitleFileExtensions { get; set; }
+
+        /// <summary>
+        /// Gets the list of lyric file extensions.
+        /// </summary>
+        public string[] LyricFileExtensions { get; }
 
         /// <summary>
         /// Gets or sets list of episode regular expressions.

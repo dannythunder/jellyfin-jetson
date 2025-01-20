@@ -13,10 +13,8 @@ using System.Net;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using Emby.Dlna.Main;
 using Emby.Naming.Common;
 using Emby.Photos;
-using Emby.Server.Implementations.Channels;
 using Emby.Server.Implementations.Collections;
 using Emby.Server.Implementations.Configuration;
 using Emby.Server.Implementations.Cryptography;
@@ -26,9 +24,7 @@ using Emby.Server.Implementations.Dto;
 using Emby.Server.Implementations.HttpServer.Security;
 using Emby.Server.Implementations.IO;
 using Emby.Server.Implementations.Library;
-using Emby.Server.Implementations.LiveTv;
 using Emby.Server.Implementations.Localization;
-using Emby.Server.Implementations.Net;
 using Emby.Server.Implementations.Playlists;
 using Emby.Server.Implementations.Plugins;
 using Emby.Server.Implementations.QuickConnect;
@@ -41,9 +37,10 @@ using Emby.Server.Implementations.Updates;
 using Jellyfin.Api.Helpers;
 using Jellyfin.Drawing;
 using Jellyfin.MediaEncoding.Hls.Playlist;
-using Jellyfin.Networking.Configuration;
 using Jellyfin.Networking.Manager;
+using Jellyfin.Networking.Udp;
 using Jellyfin.Server.Implementations;
+using Jellyfin.Server.Implementations.MediaSegments;
 using MediaBrowser.Common;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Events;
@@ -66,7 +63,6 @@ using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Controller.Playlists;
-using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Controller.QuickConnect;
 using MediaBrowser.Controller.Resolvers;
@@ -78,6 +74,7 @@ using MediaBrowser.Controller.TV;
 using MediaBrowser.LocalMetadata.Savers;
 using MediaBrowser.MediaEncoding.BdInfo;
 using MediaBrowser.MediaEncoding.Subtitles;
+using MediaBrowser.MediaEncoding.Transcoding;
 using MediaBrowser.Model.Cryptography;
 using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.IO;
@@ -100,6 +97,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Prometheus.DotNetRuntime;
 using static MediaBrowser.Controller.Extensions.ConfigurationExtensions;
+using IConfigurationManager = MediaBrowser.Common.Configuration.IConfigurationManager;
 using WebSocketManager = Emby.Server.Implementations.HttpServer.WebSocketManager;
 
 namespace Emby.Server.Implementations
@@ -112,13 +110,13 @@ namespace Emby.Server.Implementations
         /// <summary>
         /// The disposable parts.
         /// </summary>
-        private readonly ConcurrentDictionary<IDisposable, byte> _disposableParts = new();
+        private readonly ConcurrentBag<IDisposable> _disposableParts = new();
         private readonly DeviceId _deviceId;
 
         private readonly IConfiguration _startupConfig;
         private readonly IXmlSerializer _xmlSerializer;
         private readonly IStartupOptions _startupOptions;
-        private readonly IPluginManager _pluginManager;
+        private readonly PluginManager _pluginManager;
 
         private List<Type> _creatingInstances;
 
@@ -149,7 +147,7 @@ namespace Emby.Server.Implementations
             _startupConfig = startupConfig;
 
             Logger = LoggerFactory.CreateLogger<ApplicationHost>();
-            _deviceId = new DeviceId(ApplicationPaths, LoggerFactory);
+            _deviceId = new DeviceId(ApplicationPaths, LoggerFactory.CreateLogger<DeviceId>());
 
             ApplicationVersion = typeof(ApplicationHost).Assembly.GetName().Version;
             ApplicationVersionString = ApplicationVersion.ToString(3);
@@ -164,7 +162,7 @@ namespace Emby.Server.Implementations
                 ApplicationPaths.PluginsPath,
                 ApplicationVersion);
 
-            _disposableParts.TryAdd((PluginManager)_pluginManager, byte.MinValue);
+            _disposableParts.Add(_pluginManager);
         }
 
         /// <summary>
@@ -310,7 +308,9 @@ namespace Emby.Server.Implementations
             {
                 _creatingInstances.Add(type);
                 Logger.LogDebug("Creating instance of {Type}", type);
-                return ActivatorUtilities.CreateInstance(ServiceProvider, type);
+                return ServiceProvider is null
+                    ? Activator.CreateInstance(type)
+                    : ActivatorUtilities.CreateInstance(ServiceProvider, type);
             }
             catch (Exception ex)
             {
@@ -361,7 +361,7 @@ namespace Emby.Server.Implementations
             {
                 foreach (var part in parts.OfType<IDisposable>())
                 {
-                    _disposableParts.TryAdd(part, byte.MinValue);
+                    _disposableParts.Add(part);
                 }
             }
 
@@ -382,7 +382,7 @@ namespace Emby.Server.Implementations
             {
                 foreach (var part in parts.OfType<IDisposable>())
                 {
-                    _disposableParts.TryAdd(part, byte.MinValue);
+                    _disposableParts.Add(part);
                 }
             }
 
@@ -393,7 +393,7 @@ namespace Emby.Server.Implementations
         /// Runs the startup tasks.
         /// </summary>
         /// <returns><see cref="Task" />.</returns>
-        public async Task RunStartupTasksAsync()
+        public Task RunStartupTasksAsync()
         {
             Logger.LogInformation("Running startup tasks");
 
@@ -402,41 +402,18 @@ namespace Emby.Server.Implementations
             ConfigurationManager.ConfigurationUpdated += OnConfigurationUpdated;
             ConfigurationManager.NamedConfigurationUpdated += OnConfigurationUpdated;
 
-            Resolve<IMediaEncoder>().SetFFmpegPath();
+            var ffmpegValid = Resolve<IMediaEncoder>().SetFFmpegPath();
+
+            if (!ffmpegValid)
+            {
+                throw new FfmpegException("Failed to find valid ffmpeg");
+            }
 
             Logger.LogInformation("ServerId: {ServerId}", SystemId);
-
-            var entryPoints = GetExports<IServerEntryPoint>();
-
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-
-            await Task.WhenAll(StartEntryPoints(entryPoints, true)).ConfigureAwait(false);
-            Logger.LogInformation("Executed all pre-startup entry points in {Elapsed:g}", stopWatch.Elapsed);
-
             Logger.LogInformation("Core startup complete");
             CoreStartupHasCompleted = true;
 
-            stopWatch.Restart();
-
-            await Task.WhenAll(StartEntryPoints(entryPoints, false)).ConfigureAwait(false);
-            Logger.LogInformation("Executed all post-startup entry points in {Elapsed:g}", stopWatch.Elapsed);
-            stopWatch.Stop();
-        }
-
-        private IEnumerable<Task> StartEntryPoints(IEnumerable<IServerEntryPoint> entryPoints, bool isBeforeStartup)
-        {
-            foreach (var entryPoint in entryPoints)
-            {
-                if (isBeforeStartup != (entryPoint is IRunBeforeStartup))
-                {
-                    continue;
-                }
-
-                Logger.LogDebug("Starting entry point {Type}", entryPoint.GetType());
-
-                yield return entryPoint.RunAsync();
-            }
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc/>
@@ -451,7 +428,7 @@ namespace Emby.Server.Implementations
             // Initialize runtime stat collection
             if (ConfigurationManager.Configuration.EnableMetrics)
             {
-                DotNetRuntimeStatsBuilder.Default().StartCollecting();
+                _disposableParts.Add(DotNetRuntimeStatsBuilder.Default().StartCollecting());
             }
 
             var networkConfiguration = ConfigurationManager.GetNetworkConfiguration();
@@ -486,7 +463,7 @@ namespace Emby.Server.Implementations
             serviceCollection.AddSingleton<IServerConfigurationManager>(ConfigurationManager);
             serviceCollection.AddSingleton<IConfigurationManager>(ConfigurationManager);
             serviceCollection.AddSingleton<IApplicationHost>(this);
-            serviceCollection.AddSingleton(_pluginManager);
+            serviceCollection.AddSingleton<IPluginManager>(_pluginManager);
             serviceCollection.AddSingleton<IApplicationPaths>(ApplicationPaths);
 
             serviceCollection.AddSingleton<IFileSystem, ManagedFileSystem>();
@@ -501,8 +478,6 @@ namespace Emby.Server.Implementations
             serviceCollection.AddSingleton<ITaskManager, TaskManager>();
 
             serviceCollection.AddSingleton(_xmlSerializer);
-
-            serviceCollection.AddSingleton<IStreamHelper, StreamHelper>();
 
             serviceCollection.AddSingleton<ICryptoProvider, CryptographyProvider>();
 
@@ -555,8 +530,6 @@ namespace Emby.Server.Implementations
             serviceCollection.AddTransient(provider => new Lazy<ILiveTvManager>(provider.GetRequiredService<ILiveTvManager>));
             serviceCollection.AddSingleton<IDtoService, DtoService>();
 
-            serviceCollection.AddSingleton<IChannelManager, ChannelManager>();
-
             serviceCollection.AddSingleton<ISessionManager, SessionManager>();
 
             serviceCollection.AddSingleton<ICollectionManager, CollectionManager>();
@@ -564,9 +537,6 @@ namespace Emby.Server.Implementations
             serviceCollection.AddSingleton<IPlaylistManager, PlaylistManager>();
 
             serviceCollection.AddSingleton<ISyncPlayManager, SyncPlayManager>();
-
-            serviceCollection.AddSingleton<LiveTvDtoService>();
-            serviceCollection.AddSingleton<ILiveTvManager, LiveTvManager>();
 
             serviceCollection.AddSingleton<IUserViewManager, UserViewManager>();
 
@@ -582,12 +552,14 @@ namespace Emby.Server.Implementations
 
             serviceCollection.AddSingleton<IAttachmentExtractor, MediaBrowser.MediaEncoding.Attachments.AttachmentExtractor>();
 
-            serviceCollection.AddSingleton<TranscodingJobHelper>();
+            serviceCollection.AddSingleton<ITranscodeManager, TranscodeManager>();
             serviceCollection.AddScoped<MediaInfoHelper>();
             serviceCollection.AddScoped<AudioHelper>();
             serviceCollection.AddScoped<DynamicHlsHelper>();
             serviceCollection.AddScoped<IClientEventLogger, ClientEventLogger>();
             serviceCollection.AddSingleton<IDirectoryService, DirectoryService>();
+
+            serviceCollection.AddSingleton<IMediaSegmentManager, MediaSegmentManager>();
         }
 
         /// <summary>
@@ -635,7 +607,7 @@ namespace Emby.Server.Implementations
                 // Don't use an empty string password
                 password = string.IsNullOrWhiteSpace(password) ? null : password;
 
-                var localCert = new X509Certificate2(path, password, X509KeyStorageFlags.UserKeySet);
+                var localCert = X509CertificateLoader.LoadPkcs12FromFile(path, password, X509KeyStorageFlags.UserKeySet);
                 if (!localCert.HasPrivateKey)
                 {
                     Logger.LogError("No private key included in SSL cert {CertificateLocation}.", path);
@@ -666,11 +638,12 @@ namespace Emby.Server.Implementations
             BaseItem.FileSystem = Resolve<IFileSystem>();
             BaseItem.UserDataManager = Resolve<IUserDataManager>();
             BaseItem.ChannelManager = Resolve<IChannelManager>();
-            Video.LiveTvManager = Resolve<ILiveTvManager>();
+            Video.RecordingsManager = Resolve<IRecordingsManager>();
             Folder.UserViewManager = Resolve<IUserViewManager>();
             UserView.TVSeriesManager = Resolve<ITVSeriesManager>();
             UserView.CollectionManager = Resolve<ICollectionManager>();
             BaseItem.MediaSourceManager = Resolve<IMediaSourceManager>();
+            BaseItem.MediaSegmentManager = Resolve<IMediaSegmentManager>();
             CollectionFolder.XmlSerializer = _xmlSerializer;
             CollectionFolder.ApplicationHost = this;
         }
@@ -700,9 +673,8 @@ namespace Emby.Server.Implementations
                 GetExports<IMetadataService>(),
                 GetExports<IMetadataProvider>(),
                 GetExports<IMetadataSaver>(),
-                GetExports<IExternalId>());
-
-            Resolve<ILiveTvManager>().AddParts(GetExports<ILiveTvService>(), GetExports<ITunerHost>(), GetExports<IListingsProvider>());
+                GetExports<IExternalId>(),
+                GetExports<IExternalUrlProvider>());
 
             Resolve<IMediaSourceManager>().AddParts(GetExports<IMediaSourceProvider>());
         }
@@ -865,9 +837,6 @@ namespace Emby.Server.Implementations
             // MediaEncoding
             yield return typeof(MediaBrowser.MediaEncoding.Encoder.MediaEncoder).Assembly;
 
-            // Dlna
-            yield return typeof(DlnaEntryPoint).Assembly;
-
             // Local metadata
             yield return typeof(BoxSetXmlSaver).Assembly;
 
@@ -1006,7 +975,7 @@ namespace Emby.Server.Implementations
 
                 Logger.LogInformation("Disposing {Type}", type.Name);
 
-                foreach (var (part, _) in _disposableParts)
+                foreach (var part in _disposableParts.ToArray())
                 {
                     var partType = part.GetType();
                     if (partType == type)

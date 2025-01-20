@@ -53,7 +53,10 @@ namespace Jellyfin.XbmcMetadata.Tests.Parsers
 
             var userData = new Mock<IUserDataManager>();
             userData.Setup(x => x.GetUserData(_testUser, It.IsAny<BaseItem>()))
-                .Returns(new UserItemData());
+                .Returns(new UserItemData()
+                {
+                    Key = "Something"
+                });
 
             var directoryService = new Mock<IDirectoryService>();
             _localImageFileMetadata = new FileSystemMetadata()
@@ -217,7 +220,7 @@ namespace Jellyfin.XbmcMetadata.Tests.Parsers
 
             _parser.Fetch(result, "Test Data/Fanart.nfo", CancellationToken.None);
 
-            Assert.Single(result.RemoteImages.Where(x => x.Type == ImageType.Backdrop));
+            Assert.Single(result.RemoteImages, x => x.Type == ImageType.Backdrop);
             Assert.Equal("https://assets.fanart.tv/fanart/movies/141052/moviebackground/justice-league-5a5332c7b5e77.jpg", result.RemoteImages.First(x => x.Type == ImageType.Backdrop).Url);
         }
 

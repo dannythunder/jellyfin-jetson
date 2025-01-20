@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Jellyfin.Data.Entities.Security;
@@ -58,19 +58,10 @@ namespace Jellyfin.Server.Implementations.Security
             var dbContext = await _dbProvider.CreateDbContextAsync().ConfigureAwait(false);
             await using (dbContext.ConfigureAwait(false))
             {
-                var key = await dbContext.ApiKeys
+                await dbContext.ApiKeys
                     .Where(apiKey => apiKey.AccessToken == accessToken)
-                    .FirstOrDefaultAsync()
+                    .ExecuteDeleteAsync()
                     .ConfigureAwait(false);
-
-                if (key is null)
-                {
-                    return;
-                }
-
-                dbContext.Remove(key);
-
-                await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         }
     }

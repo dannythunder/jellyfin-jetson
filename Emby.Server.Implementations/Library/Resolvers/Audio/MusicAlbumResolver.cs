@@ -13,7 +13,6 @@ using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Controller.Resolvers;
-using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
 
@@ -55,7 +54,7 @@ namespace Emby.Server.Implementations.Library.Resolvers.Audio
         protected override MusicAlbum Resolve(ItemResolveArgs args)
         {
             var collectionType = args.GetCollectionType();
-            var isMusicMediaFolder = collectionType == CollectionType.Music;
+            var isMusicMediaFolder = collectionType == CollectionType.music;
 
             // If there's a collection type and it's not music, don't allow it.
             if (!isMusicMediaFolder)

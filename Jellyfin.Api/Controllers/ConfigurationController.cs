@@ -6,6 +6,7 @@ using Jellyfin.Api.Attributes;
 using Jellyfin.Api.Constants;
 using Jellyfin.Api.Models.ConfigurationDtos;
 using Jellyfin.Extensions.Json;
+using MediaBrowser.Common.Api;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Configuration;
@@ -124,12 +125,15 @@ public class ConfigurationController : BaseJellyfinApiController
     /// <param name="mediaEncoderPath">Media encoder path form body.</param>
     /// <response code="204">Media encoder path updated.</response>
     /// <returns>Status.</returns>
+    [Obsolete("This endpoint is obsolete.")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpPost("MediaEncoder/Path")]
     [Authorize(Policy = Policies.FirstTimeSetupOrElevated)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public ActionResult UpdateMediaEncoderPath([FromBody, Required] MediaEncoderPathDto mediaEncoderPath)
     {
-        _mediaEncoder.UpdateEncoderPath(mediaEncoderPath.Path, mediaEncoderPath.PathType);
+        // API ENDPOINT DISABLED (NOOP) FOR SECURITY PURPOSES
+        // _mediaEncoder.UpdateEncoderPath(mediaEncoderPath.Path, mediaEncoderPath.PathType);
         return NoContent();
     }
 }

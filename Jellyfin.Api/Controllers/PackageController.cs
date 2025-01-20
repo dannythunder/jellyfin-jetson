@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using Jellyfin.Api.Constants;
+using MediaBrowser.Common.Api;
 using MediaBrowser.Common.Updates;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Model.Updates;
@@ -17,7 +18,7 @@ namespace Jellyfin.Api.Controllers;
 /// Package Controller.
 /// </summary>
 [Route("")]
-[Authorize]
+[Authorize(Policy = Policies.RequiresElevation)]
 public class PackageController : BaseJellyfinApiController
 {
     private readonly IInstallationManager _installationManager;
@@ -89,7 +90,6 @@ public class PackageController : BaseJellyfinApiController
     [HttpPost("Packages/Installed/{name}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [Authorize(Policy = Policies.RequiresElevation)]
     public async Task<ActionResult> InstallPackage(
         [FromRoute, Required] string name,
         [FromQuery] Guid? assemblyGuid,
@@ -127,7 +127,6 @@ public class PackageController : BaseJellyfinApiController
     /// <response code="204">Installation cancelled.</response>
     /// <returns>A <see cref="NoContentResult"/> on successfully cancelling a package installation.</returns>
     [HttpDelete("Packages/Installing/{packageId}")]
-    [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public ActionResult CancelPackageInstallation(
         [FromRoute, Required] Guid packageId)
@@ -155,7 +154,6 @@ public class PackageController : BaseJellyfinApiController
     /// <response code="204">Package repositories saved.</response>
     /// <returns>A <see cref="NoContentResult"/>.</returns>
     [HttpPost("Repositories")]
-    [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public ActionResult SetRepositories([FromBody, Required] RepositoryInfo[] repositoryInfos)
     {

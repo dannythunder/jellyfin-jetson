@@ -13,7 +13,7 @@
     "HomeVideos": "Video Rumahan",
     "HeaderRecordingGroups": "Grup Rekaman",
     "HeaderNextUp": "Selanjutnya",
-    "HeaderLiveTV": "TV Live",
+    "HeaderLiveTV": "Siaran langsung",
     "HeaderFavoriteSongs": "Lagu Favorit",
     "HeaderFavoriteShows": "Tayangan Favorit",
     "HeaderFavoriteEpisodes": "Episode Favorit",
@@ -81,7 +81,7 @@
     "Movies": "Film",
     "MessageServerConfigurationUpdated": "Konfigurasi server telah diperbarui",
     "MessageNamedServerConfigurationUpdatedWithValue": "Bagian konfigurasi server {0} telah diperbarui",
-    "FailedLoginAttemptWithUserName": "Gagal melakukan login dari {0}",
+    "FailedLoginAttemptWithUserName": "Gagal upaya login dari {0}",
     "CameraImageUploadedFrom": "Sebuah gambar kamera baru telah diunggah dari {0}",
     "DeviceOfflineWithName": "{0} telah terputus",
     "DeviceOnlineWithName": "{0} telah terhubung",
@@ -123,5 +123,11 @@
     "TaskKeyframeExtractorDescription": "Ekstrak bingkai utama dari file video untuk membuat daftar putar HLS yang lebih tepat. Tugas ini dapat berjalan untuk waktu yang lama.",
     "TaskKeyframeExtractor": "Ekstraktor Bingkai Utama",
     "External": "Luar",
-    "HearingImpaired": "Gangguan Pendengaran"
+    "HearingImpaired": "Gangguan Pendengaran",
+    "TaskRefreshTrickplayImages": "Hasilkan Gambar Trickplay",
+    "TaskRefreshTrickplayImagesDescription": "Buat pratinjau trickplay untuk video di perpustakaan yang diaktifkan.",
+    "TaskAudioNormalizationDescription": "Pindai file untuk data normalisasi audio.",
+    "TaskAudioNormalization": "Normalisasi Audio",
+    "TaskCleanCollectionsAndPlaylists": "Bersihkan koleksi dan daftar putar",
+    "TaskCleanCollectionsAndPlaylistsDescription": "Menghapus item dari koleksi dan daftar putar yang sudah tidak ada."
 }

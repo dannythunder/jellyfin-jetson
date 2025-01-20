@@ -506,6 +506,7 @@ namespace Jellyfin.Data.Entities
             Permissions.Add(new Permission(PermissionKind.EnableRemoteControlOfOtherUsers, false));
             Permissions.Add(new Permission(PermissionKind.EnableCollectionManagement, false));
             Permissions.Add(new Permission(PermissionKind.EnableSubtitleManagement, false));
+            Permissions.Add(new Permission(PermissionKind.EnableLyricManagement, false));
         }
 
         /// <summary>
@@ -513,7 +514,7 @@ namespace Jellyfin.Data.Entities
         /// </summary>
         public void AddDefaultPreferences()
         {
-            foreach (var val in Enum.GetValues(typeof(PreferenceKind)).Cast<PreferenceKind>())
+            foreach (var val in Enum.GetValues<PreferenceKind>())
             {
                 Preferences.Add(new Preference(val, string.Empty));
             }

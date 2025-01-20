@@ -42,7 +42,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
             // If there's more than one we'll need to use the concat command
             if (inputFiles.Count > 1)
             {
-                var files = string.Join("|", inputFiles.Select(NormalizePath));
+                var files = string.Join('|', inputFiles.Select(NormalizePath));
 
                 return string.Format(CultureInfo.InvariantCulture, "concat:\"{0}\"", files);
             }
@@ -59,7 +59,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
         /// <returns>System.String.</returns>
         private static string GetFileInputArgument(string path, string inputPrefix)
         {
-            if (path.IndexOf("://", StringComparison.Ordinal) != -1)
+            if (path.Contains("://", StringComparison.Ordinal))
             {
                 return string.Format(CultureInfo.InvariantCulture, "\"{0}\"", path);
             }

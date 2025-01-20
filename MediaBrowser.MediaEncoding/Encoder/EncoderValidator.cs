@@ -27,6 +27,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
             "msmpeg4",
             "dca",
             "ac3",
+            "ac4",
             "aac",
             "mp3",
             "flac",
@@ -45,7 +46,15 @@ namespace MediaBrowser.MediaEncoding.Encoder
             "mpeg4_cuvid",
             "vp8_cuvid",
             "vp9_cuvid",
-            "av1_cuvid"
+            "av1_cuvid",
+            "h264_rkmpp",
+            "hevc_rkmpp",
+            "mpeg1_rkmpp",
+            "mpeg2_rkmpp",
+            "mpeg4_rkmpp",
+            "vp8_rkmpp",
+            "vp9_rkmpp",
+            "av1_rkmpp"
         };
 
         private static readonly string[] _requiredEncoders = new[]
@@ -53,14 +62,11 @@ namespace MediaBrowser.MediaEncoding.Encoder
             "libx264",
             "libx265",
             "libsvtav1",
-            "mpeg4",
-            "msmpeg4",
-            "libvpx",
-            "libvpx-vp9",
             "aac",
             "aac_at",
             "libfdk_aac",
             "ac3",
+            "alac",
             "dca",
             "libmp3lame",
             "libopus",
@@ -73,6 +79,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
             "av1_amf",
             "h264_qsv",
             "hevc_qsv",
+            "mjpeg_qsv",
             "av1_qsv",
             "h264_nvenc",
             "hevc_nvenc",
@@ -80,9 +87,14 @@ namespace MediaBrowser.MediaEncoding.Encoder
             "h264_vaapi",
             "hevc_vaapi",
             "av1_vaapi",
+            "mjpeg_vaapi",
             "h264_v4l2m2m",
             "h264_videotoolbox",
-            "hevc_videotoolbox"
+            "hevc_videotoolbox",
+            "mjpeg_videotoolbox",
+            "h264_rkmpp",
+            "hevc_rkmpp",
+            "mjpeg_rkmpp"
         };
 
         private static readonly string[] _requiredFilters = new[]
@@ -90,6 +102,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
             // sw
             "alphasrc",
             "zscale",
+            "tonemapx",
             // qsv
             "scale_qsv",
             "vpp_qsv",
@@ -98,55 +111,73 @@ namespace MediaBrowser.MediaEncoding.Encoder
             // cuda
             "scale_cuda",
             "yadif_cuda",
+            "bwdif_cuda",
             "tonemap_cuda",
             "overlay_cuda",
+            "transpose_cuda",
             "hwupload_cuda",
             // opencl
             "scale_opencl",
             "tonemap_opencl",
             "overlay_opencl",
+            "transpose_opencl",
             // vaapi
             "scale_vaapi",
             "deinterlace_vaapi",
             "tonemap_vaapi",
             "procamp_vaapi",
             "overlay_vaapi",
+            "transpose_vaapi",
             "hwupload_vaapi",
             // vulkan
             "libplacebo",
             "scale_vulkan",
             "overlay_vulkan",
-            "hwupload_vaapi",
+            "transpose_vulkan",
+            "flip_vulkan",
             // videotoolbox
-            "yadif_videotoolbox"
+            "yadif_videotoolbox",
+            "bwdif_videotoolbox",
+            "scale_vt",
+            "transpose_vt",
+            "overlay_videotoolbox",
+            "tonemap_videotoolbox",
+            // rkrga
+            "scale_rkrga",
+            "vpp_rkrga",
+            "overlay_rkrga"
         };
 
-        private static readonly IReadOnlyDictionary<int, string[]> _filterOptionsDict = new Dictionary<int, string[]>
+        private static readonly Dictionary<int, string[]> _filterOptionsDict = new Dictionary<int, string[]>
         {
-            { 0, new string[] { "scale_cuda", "Output format (default \"same\")" } },
+            { 0, new string[] { "scale_cuda", "format" } },
             { 1, new string[] { "tonemap_cuda", "GPU accelerated HDR to SDR tonemapping" } },
             { 2, new string[] { "tonemap_opencl", "bt2390" } },
             { 3, new string[] { "overlay_opencl", "Action to take when encountering EOF from secondary input" } },
             { 4, new string[] { "overlay_vaapi", "Action to take when encountering EOF from secondary input" } },
-            { 5, new string[] { "overlay_vulkan", "Action to take when encountering EOF from secondary input" } }
+            { 5, new string[] { "overlay_vulkan", "Action to take when encountering EOF from secondary input" } },
+            { 6, new string[] { "transpose_opencl", "rotate by half-turn" } }
         };
 
-        // These are the library versions that corresponds to our minimum ffmpeg version 4.x according to the version table below
-        private static readonly IReadOnlyDictionary<string, Version> _ffmpegMinimumLibraryVersions = new Dictionary<string, Version>
+        // These are the library versions that corresponds to our minimum ffmpeg version 4.4 according to the version table below
+        // Refers to the versions in https://ffmpeg.org/download.html
+        private static readonly Dictionary<string, Version> _ffmpegMinimumLibraryVersions = new Dictionary<string, Version>
         {
-            { "libavutil", new Version(56, 14) },
-            { "libavcodec", new Version(58, 18) },
-            { "libavformat", new Version(58, 12) },
-            { "libavdevice", new Version(58, 3) },
-            { "libavfilter", new Version(7, 16) },
-            { "libswscale", new Version(5, 1) },
-            { "libswresample", new Version(3, 1) },
-            { "libpostproc", new Version(55, 1) }
+            { "libavutil", new Version(56, 70) },
+            { "libavcodec", new Version(58, 134) },
+            { "libavformat", new Version(58, 76) },
+            { "libavdevice", new Version(58, 13) },
+            { "libavfilter", new Version(7, 110) },
+            { "libswscale", new Version(5, 9) },
+            { "libswresample", new Version(3, 9) },
+            { "libpostproc", new Version(55, 9) }
         };
 
         private readonly ILogger _logger;
 
         private readonly string _encoderPath;
+
+        private readonly Version _minFFmpegMultiThreadedCli = new Version(7, 0);
 
         public EncoderValidator(ILogger logger, string encoderPath)
         {
@@ -161,7 +192,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
         }
 
         // When changing this, also change the minimum library versions in _ffmpegMinimumLibraryVersions
-        public static Version MinVersion { get; } = new Version(4, 0);
+        public static Version MinVersion { get; } = new Version(4, 4);
 
         public static Version? MaxVersion { get; } = null;
 
@@ -197,7 +228,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
 
         internal bool ValidateVersionInternal(string versionOutput)
         {
-            if (versionOutput.IndexOf("Libav developers", StringComparison.OrdinalIgnoreCase) != -1)
+            if (versionOutput.Contains("Libav developers", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogError("FFmpeg validation: avconv instead of ffmpeg is not supported");
                 return false;
@@ -333,7 +364,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
         /// </summary>
         /// <param name="output">The 'ffmpeg -version' output.</param>
         /// <returns>The library names and major.minor version numbers.</returns>
-        private static IReadOnlyDictionary<string, Version> GetFFmpegLibraryVersions(string output)
+        private static Dictionary<string, Version> GetFFmpegLibraryVersions(string output)
         {
             var map = new Dictionary<string, Version>();
 
@@ -457,7 +488,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
             return false;
         }
 
-        public bool CheckSupportedRuntimeKey(string keyDesc)
+        public bool CheckSupportedRuntimeKey(string keyDesc, Version? ffmpegVersion)
         {
             if (string.IsNullOrEmpty(keyDesc))
             {
@@ -467,7 +498,9 @@ namespace MediaBrowser.MediaEncoding.Encoder
             string output;
             try
             {
-                output = GetProcessOutput(_encoderPath, "-hide_banner -f lavfi -i nullsrc=s=1x1:d=500 -f null -", true, "?");
+                // With multi-threaded cli support, FFmpeg 7 is less sensitive to keyboard input
+                var duration = ffmpegVersion >= _minFFmpegMultiThreadedCli ? 10000 : 1000;
+                output = GetProcessOutput(_encoderPath, $"-hide_banner -f lavfi -i nullsrc=s=1x1:d={duration} -f null -", true, "?");
             }
             catch (Exception ex)
             {
@@ -476,6 +509,11 @@ namespace MediaBrowser.MediaEncoding.Encoder
             }
 
             return output.Contains(keyDesc, StringComparison.Ordinal);
+        }
+
+        public bool CheckSupportedHwaccelFlag(string flag)
+        {
+            return !string.IsNullOrEmpty(flag) && GetProcessExitCode(_encoderPath, $"-loglevel quiet -hwaccel_flags +{flag} -hide_banner -f lavfi -i nullsrc=s=1x1:d=100 -f null -");
         }
 
         private IEnumerable<string> GetCodecs(Codec codec)
@@ -537,9 +575,9 @@ namespace MediaBrowser.MediaEncoding.Encoder
             return found;
         }
 
-        private IDictionary<int, bool> GetFFmpegFiltersWithOption()
+        private Dictionary<int, bool> GetFFmpegFiltersWithOption()
         {
-            IDictionary<int, bool> dict = new Dictionary<int, bool>();
+            Dictionary<int, bool> dict = new Dictionary<int, bool>();
             for (int i = 0; i < _filterOptionsDict.Count; i++)
             {
                 if (_filterOptionsDict.TryGetValue(i, out var val) && val.Length == 2)
@@ -580,6 +618,31 @@ namespace MediaBrowser.MediaEncoding.Encoder
 
                 using var reader = readStdErr ? process.StandardError : process.StandardOutput;
                 return reader.ReadToEnd();
+            }
+        }
+
+        private bool GetProcessExitCode(string path, string arguments)
+        {
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo(path, arguments)
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                ErrorDialog = false
+            };
+            _logger.LogDebug("Running {Path} {Arguments}", path, arguments);
+
+            try
+            {
+                process.Start();
+                process.WaitForExit();
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Running {Path} {Arguments} failed with exception {Exception}", path, arguments, ex.Message);
+                return false;
             }
         }
 

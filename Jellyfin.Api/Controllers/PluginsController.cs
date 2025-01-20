@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Jellyfin.Api.Attributes;
 using Jellyfin.Api.Constants;
 using Jellyfin.Extensions.Json;
+using MediaBrowser.Common.Api;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Common.Updates;
 using MediaBrowser.Model.Net;
@@ -21,7 +22,7 @@ namespace Jellyfin.Api.Controllers;
 /// <summary>
 /// Plugins controller.
 /// </summary>
-[Authorize]
+[Authorize(Policy = Policies.RequiresElevation)]
 public class PluginsController : BaseJellyfinApiController
 {
     private readonly IInstallationManager _installationManager;
@@ -65,7 +66,6 @@ public class PluginsController : BaseJellyfinApiController
     /// <response code="404">Plugin not found.</response>
     /// <returns>An <see cref="NoContentResult"/> on success, or a <see cref="NotFoundResult"/> if the plugin could not be found.</returns>
     [HttpPost("{pluginId}/{version}/Enable")]
-    [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult EnablePlugin([FromRoute, Required] Guid pluginId, [FromRoute, Required] Version version)
@@ -89,7 +89,6 @@ public class PluginsController : BaseJellyfinApiController
     /// <response code="404">Plugin not found.</response>
     /// <returns>An <see cref="NoContentResult"/> on success, or a <see cref="NotFoundResult"/> if the plugin could not be found.</returns>
     [HttpPost("{pluginId}/{version}/Disable")]
-    [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult DisablePlugin([FromRoute, Required] Guid pluginId, [FromRoute, Required] Version version)
@@ -113,7 +112,6 @@ public class PluginsController : BaseJellyfinApiController
     /// <response code="404">Plugin not found.</response>
     /// <returns>An <see cref="NoContentResult"/> on success, or a <see cref="NotFoundResult"/> if the plugin could not be found.</returns>
     [HttpDelete("{pluginId}/{version}")]
-    [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult UninstallPluginByVersion([FromRoute, Required] Guid pluginId, [FromRoute, Required] Version version)
@@ -136,7 +134,6 @@ public class PluginsController : BaseJellyfinApiController
     /// <response code="404">Plugin not found.</response>
     /// <returns>An <see cref="NoContentResult"/> on success, or a <see cref="NotFoundResult"/> if the plugin could not be found.</returns>
     [HttpDelete("{pluginId}")]
-    [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [Obsolete("Please use the UninstallPluginByVersion API.")]
@@ -235,6 +232,8 @@ public class PluginsController : BaseJellyfinApiController
         {
             return NotFound();
         }
+
+        Response.Headers.ContentDisposition = "attachment";
 
         imagePath = Path.Combine(plugin.Path, plugin.Manifest.ImagePath);
         return PhysicalFile(imagePath, MimeTypes.GetMimeType(imagePath));

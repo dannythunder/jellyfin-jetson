@@ -3,6 +3,7 @@
 
 using System;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Xml.Serialization;
 using Jellyfin.Data.Enums;
 using AccessSchedule = Jellyfin.Data.Entities.AccessSchedule;
@@ -92,6 +93,12 @@ namespace MediaBrowser.Model.Users
         public bool EnableSubtitleManagement { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether this user can manage lyrics.
+        /// </summary>
+        [DefaultValue(false)]
+        public bool EnableLyricManagement { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether this instance is disabled.
         /// </summary>
         /// <value><c>true</c> if this instance is disabled; otherwise, <c>false</c>.</value>
@@ -174,8 +181,10 @@ namespace MediaBrowser.Model.Users
         public int RemoteClientBitrateLimit { get; set; }
 
         [XmlElement(ElementName = "AuthenticationProviderId")]
+        [Required(AllowEmptyStrings = false)]
         public string AuthenticationProviderId { get; set; }
 
+        [Required(AllowEmptyStrings= false)]
         public string PasswordResetProviderId { get; set; }
 
         /// <summary>

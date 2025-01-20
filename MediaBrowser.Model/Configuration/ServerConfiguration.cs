@@ -96,8 +96,6 @@ public class ServerConfiguration : BaseApplicationConfiguration
     /// <value>The metadata path.</value>
     public string MetadataPath { get; set; } = string.Empty;
 
-    public string MetadataNetworkPath { get; set; } = string.Empty;
-
     /// <summary>
     /// Gets or sets the preferred metadata language.
     /// </summary>
@@ -163,7 +161,7 @@ public class ServerConfiguration : BaseApplicationConfiguration
     /// If set to 0 the check for inactive sessions gets disabled.
     /// </summary>
     /// <value>The close inactive session threshold in minutes. 0 to disable.</value>
-    public int InactiveSessionThreshold { get; set; } = 10;
+    public int InactiveSessionThreshold { get; set; }
 
     /// <summary>
     /// Gets or sets the delay in seconds that we will wait after a file system change to try and discover what has been added/removed
@@ -246,11 +244,6 @@ public class ServerConfiguration : BaseApplicationConfiguration
     public int LibraryMetadataRefreshConcurrency { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether older plugins should automatically be deleted from the plugin folder.
-    /// </summary>
-    public bool RemoveOldPlugins { get; set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether clients should be allowed to upload logs.
     /// </summary>
     public bool AllowClientLogUpload { get; set; } = true;
@@ -283,4 +276,9 @@ public class ServerConfiguration : BaseApplicationConfiguration
     /// </summary>
     /// <value>The trickplay options.</value>
     public TrickplayOptions TrickplayOptions { get; set; } = new TrickplayOptions();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether old authorization methods are allowed.
+    /// </summary>
+    public bool EnableLegacyAuthorization { get; set; } = true;
 }

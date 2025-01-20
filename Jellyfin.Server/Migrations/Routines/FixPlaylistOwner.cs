@@ -15,12 +15,12 @@ namespace Jellyfin.Server.Migrations.Routines;
 /// </summary>
 internal class FixPlaylistOwner : IMigrationRoutine
 {
-    private readonly ILogger<RemoveDuplicateExtras> _logger;
+    private readonly ILogger<FixPlaylistOwner> _logger;
     private readonly ILibraryManager _libraryManager;
     private readonly IPlaylistManager _playlistManager;
 
     public FixPlaylistOwner(
-        ILogger<RemoveDuplicateExtras> logger,
+        ILogger<FixPlaylistOwner> logger,
         ILibraryManager libraryManager,
         IPlaylistManager playlistManager)
     {
@@ -54,12 +54,12 @@ internal class FixPlaylistOwner : IMigrationRoutine
             foreach (var playlist in playlists)
             {
                 var shares = playlist.Shares;
-                if (shares.Length > 0)
+                if (shares.Count > 0)
                 {
                     var firstEditShare = shares.First(x => x.CanEdit);
-                    if (firstEditShare is not null && Guid.TryParse(firstEditShare.UserId, out var guid))
+                    if (firstEditShare is not null)
                     {
-                        playlist.OwnerUserId = guid;
+                        playlist.OwnerUserId = firstEditShare.UserId;
                         playlist.Shares = shares.Where(x => x != firstEditShare).ToArray();
                         playlist.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).GetAwaiter().GetResult();
                         _playlistManager.SavePlaylistFile(playlist);

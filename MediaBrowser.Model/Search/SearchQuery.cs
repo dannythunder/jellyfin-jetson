@@ -1,4 +1,3 @@
-#nullable disable
 #pragma warning disable CS1591
 
 using System;
@@ -16,7 +15,7 @@ namespace MediaBrowser.Model.Search
             IncludePeople = true;
             IncludeStudios = true;
 
-            MediaTypes = Array.Empty<string>();
+            MediaTypes = Array.Empty<MediaType>();
             IncludeItemTypes = Array.Empty<BaseItemKind>();
             ExcludeItemTypes = Array.Empty<BaseItemKind>();
         }
@@ -31,7 +30,7 @@ namespace MediaBrowser.Model.Search
         /// Gets or sets the search term.
         /// </summary>
         /// <value>The search term.</value>
-        public string SearchTerm { get; set; }
+        public required string SearchTerm { get; set; }
 
         /// <summary>
         /// Gets or sets the start index. Used for paging.
@@ -55,7 +54,7 @@ namespace MediaBrowser.Model.Search
 
         public bool IncludeArtists { get; set; }
 
-        public string[] MediaTypes { get; set; }
+        public MediaType[] MediaTypes { get; set; }
 
         public BaseItemKind[] IncludeItemTypes { get; set; }
 

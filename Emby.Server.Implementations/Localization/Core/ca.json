@@ -124,5 +124,17 @@
     "TaskKeyframeExtractorDescription": "Extreu fotogrames clau dels fitxers de vídeo per crear llistes de reproducció HLS més precises. Aquesta tasca pot durar molt de temps.",
     "TaskKeyframeExtractor": "Extractor de fotogrames clau",
     "External": "Extern",
-    "HearingImpaired": "Discapacitat auditiva"
+    "HearingImpaired": "Discapacitat auditiva",
+    "TaskRefreshTrickplayImages": "Generar miniatures de línia de temps",
+    "TaskRefreshTrickplayImagesDescription": "Crear miniatures de línia de temps per vídeos en les biblioteques habilitades.",
+    "TaskCleanCollectionsAndPlaylistsDescription": "Esborra elements de col·leccions i llistes de reproducció que ja no existeixen.",
+    "TaskCleanCollectionsAndPlaylists": "Neteja col·leccions i llistes de reproducció",
+    "TaskAudioNormalization": "Normalització d'Àudio",
+    "TaskAudioNormalizationDescription": "Escaneja arxius per dades de normalització d'àudio.",
+    "TaskDownloadMissingLyricsDescription": "Baixar lletres de les cançons",
+    "TaskDownloadMissingLyrics": "Baixar lletres que falten",
+    "TaskExtractMediaSegments": "Escaneig de segments multimèdia",
+    "TaskExtractMediaSegmentsDescription": "Extreu o obté segments multimèdia usant els connectors MediaSegment activats.",
+    "TaskMoveTrickplayImages": "Migra la ubicació de la imatge de Trickplay",
+    "TaskMoveTrickplayImagesDescription": "Mou els fitxers trickplay existents segons la configuració de la biblioteca."
 }
